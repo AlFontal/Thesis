@@ -5,26 +5,46 @@ import numpy as np
 import tensorflow as tf
 import preprocess
 
+n_labels = 2
+
+def get_batch(tensor, n=100):
+
+    idxs = np.random.choice(len(tensor), n, replace=False)
+    x = [tensor[i][0] for i in idxs]
+    y = [tensor[i][1] for i in idxs]
+
+    return x, y
+
+def get_weights(shape):
+    w = tf.truncated_normal(shape, stddev=0.1)
+
+    return tf.Variable(w)
+
+
 sess = tf.InteractiveSession()
 
-seq1 = preprocess.seq1
-seq2 = preprocess.seq2
-test = [sum(preprocess.seq2onehot(seq2), []),
-        sum(preprocess.seq2onehot(seq1), [])]
+input = preprocess.total_tensor
 
-
-x = tf.placeholder(tf.float32, [None, 60*22])
-y_ = tf.placeholder(tf.float32, [None, 2])
-b = tf.Variable(tf.zeros([2]))
-W = tf.Variable(tf.zeros([60*22, 2]))
+x = tf.placeholder(tf.float32, [None, 100*22])
+y_ = tf.placeholder(tf.float32, [None, n_labels])
+b = tf.Variable(tf.zeros([n_labels]))
+W = get_weights([100*22, n_labels])
 y = tf.matmul(x, W) + b
 
 tf.global_variables_initializer().run()
+
 cross_entropy = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
 
+train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
 
-print cross_entropy.eval(feed_dict={x: test, y_: [[1 , 0], [0 , 1]]})
-
-
-# Work in progress
+n = 0
+for _ in range(1000):
+    n += 1
+    a, b = get_batch(input, n=len(input))
+    train_step.run(feed_dict={x: a, y_: b})
+    if n % 100 == 0:
+        correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        print "In the " + str(n) + "th iteration, training accuracy achieved is of " + \
+            str(accuracy.eval(feed_dict={x: a, y_: b}))
