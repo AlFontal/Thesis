@@ -39,47 +39,69 @@ def seq2onehot(seq):
 
     return onehot
 
-def fasta_parse(fasta_fn):
+
+def fasta_process(fasta_fn):
     """
     :param fasta_fn: Filename of the FASTA file to parse
-    :return: A dictionary containing labels as keys and sequences as values.
+    :return: A list containing the sequences in the FASTA file.
     """
     with open(fasta_fn) as fasta_file:
         fasta_list = fasta_file.read().splitlines()
 
-        parsed_seqs = {}
+        parsed_seqs = []
         for line in fasta_list:
             if line.startswith(">"):
-                label = line[1:]
-                parsed_seqs[label] = ""
+                pass
 
             else:
-                parsed_seqs[label] += line[0:100]
+                parsed_seqs.append(line[0:100])
 
     return parsed_seqs
 
 
+cyto_seqs = fasta_process("seqs/cytoplasmic.fasta")
+nuclear_seqs = fasta_process("seqs/nuclear.fasta")
+ER_seqs = fasta_process("seqs/ER.fasta")
+extra_seqs = fasta_process("seqs/extracellular.fasta")
+golgi_seqs = fasta_process("seqs/Golgi.fasta")
+lyso_seqs = fasta_process("seqs/lysosomal.fasta")
+mito_seqs = fasta_process("seqs/mitochondrial.fasta")
+perox_seqs = fasta_process("seqs/peroxisomal.fasta")
+plasma_seqs = fasta_process("seqs/plasma_membrane.fasta")
+vacu_seqs = fasta_process("seqs/vacuolar.fasta")
 
 
-cyto_seqs = fasta_parse("seqs/cytoplasmic.fasta")
-nuclear_seqs = fasta_parse("seqs/nuclear.fasta")
 
-cyto_tensor = []
+all_seqs = [cyto_seqs] + [nuclear_seqs] + [ER_seqs] + [extra_seqs] +\
+           [golgi_seqs] + [lyso_seqs] + [mito_seqs] + [perox_seqs] +\
+           [plasma_seqs] + [vacu_seqs]
 
-for seq in cyto_seqs.values():
-    cyto_tensor.append((sum(seq2onehot(seq), []), [1, 0]))
 
-nuclear_tensor = []
 
-for seq in nuclear_seqs.values():
-    nuclear_tensor.append((sum(seq2onehot(seq), []), [0, 1]))
+total_tensor = []
 
-total_tensor = nuclear_tensor + cyto_tensor
+for idx, sub_loc in enumerate(all_seqs):
+
+    sublabel = np.zeros(len(all_seqs))
+    sublabel[idx] = 1
+
+    for seq in sub_loc:
+        total_tensor.append((sum(seq2onehot(seq), []), sublabel))
+
+
+print len(total_tensor)
 
 idxs = []
 
 for i in range(len(total_tensor)):
     if len(total_tensor[i][0]) == 2200:
         idxs.append(i)
+
 total_tensor = [total_tensor[i] for i in idxs]
 
+train_idxs = np.random.choice(len(total_tensor), 0.8 * len(total_tensor),
+                              replace=False)
+test_idxs = list(set(range(len(total_tensor))) - set(train_idxs))
+
+train_tensor = [total_tensor[i] for i in train_idxs]
+test_tensor = [total_tensor[i] for i in test_idxs]

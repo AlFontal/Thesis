@@ -5,7 +5,8 @@ import numpy as np
 import tensorflow as tf
 import preprocess
 
-n_labels = 2
+n_labels = 10
+
 
 def get_batch(tensor, n=100):
 
@@ -15,6 +16,7 @@ def get_batch(tensor, n=100):
 
     return x, y
 
+
 def get_weights(shape):
     w = tf.truncated_normal(shape, stddev=0.1)
 
@@ -23,7 +25,7 @@ def get_weights(shape):
 
 sess = tf.InteractiveSession()
 
-input = preprocess.total_tensor
+input = preprocess.train_tensor
 
 x = tf.placeholder(tf.float32, [None, 100*22])
 y_ = tf.placeholder(tf.float32, [None, n_labels])
@@ -41,10 +43,16 @@ train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
 n = 0
 for _ in range(1000):
     n += 1
-    a, b = get_batch(input, n=len(input))
+    a, b = get_batch(input, n=500)
     train_step.run(feed_dict={x: a, y_: b})
-    if n % 100 == 0:
-        correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
+    if n % 100 == 0 or n == 1:
+        correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        print "In the " + str(n) + "th iteration, training accuracy achieved is of " + \
+        print "In the " + str(n) +\
+              "th iteration, training accuracy achieved is of " + \
             str(accuracy.eval(feed_dict={x: a, y_: b}))
+
+test_set = preprocess.test_tensor
+x_test = [test_set[i][0] for i in range(len(test_set))]
+y_test = [test_set[i][1] for i in range(len(test_set))]
+print(accuracy.eval(feed_dict={x: x_test, y_: y_test}))
