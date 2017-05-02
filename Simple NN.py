@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import division
+from __future__ import division$
 import numpy as np
 import tensorflow as tf
 import preprocess
@@ -15,7 +15,6 @@ def get_batch(tensor, n=100):
     y = [tensor[i][1] for i in idxs]
 
     return x, y
-
 
 def get_weights(shape):
     w = tf.truncated_normal(shape, stddev=0.1)
@@ -41,18 +40,20 @@ cross_entropy = tf.reduce_mean(
 train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
 
 n = 0
-for _ in range(1000):
+test_set = preprocess.test_tensor
+x_test = [test_set[i][0] for i in range(len(test_set))]
+y_test = [test_set[i][1] for i in range(len(test_set))]
+
+for _ in range(3000):
     n += 1
     a, b = get_batch(input, n=500)
     train_step.run(feed_dict={x: a, y_: b})
     if n % 100 == 0 or n == 1:
         correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        print "In the " + str(n) +\
-              "th iteration, training accuracy achieved is of " + \
-            str(accuracy.eval(feed_dict={x: a, y_: b}))
+        train_acc = accuracy.eval(feed_dict={x: a, y_: b})
+        test_acc = accuracy.eval(feed_dict={x: x_test, y_: y_test})
+        print str(n) + "th iteration:"
+        print "Train accuracy: {}%\t Test Accuracy: {}%\n".format(
+            round(train_acc*100, 3), round(test_acc*100, 2))
 
-test_set = preprocess.test_tensor
-x_test = [test_set[i][0] for i in range(len(test_set))]
-y_test = [test_set[i][1] for i in range(len(test_set))]
-print(accuracy.eval(feed_dict={x: x_test, y_: y_test}))
