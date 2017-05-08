@@ -3,12 +3,14 @@
 from __future__ import division
 import numpy as np
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 __author__ = 'Alejandro Fontal'
 
 curr_dir = os.getcwd()
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
-aa_string = "NILVFMCAGOTSYWQBHEDKRP"  # 20 aa + N
+aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
 
 
 def get_1h_dict(aa_string):
@@ -20,7 +22,7 @@ def get_1h_dict(aa_string):
 
     aa_dict = {}
 
-    for idx, aa in enumerate(aminoacids):
+    for idx, aa in enumerate(aa_string):
 
         if idx > 0:
             aa_dict[aa] = np.zeros(idx-1).tolist() + [1] +\
@@ -38,6 +40,8 @@ def seq2onehot(seq, aa_dict):
 
     """
     onehot = []
+
+    # Convert ambiguous amino acids into actual ones.
     for aa in seq:
 
         if aa == "Z":
@@ -46,8 +50,6 @@ def seq2onehot(seq, aa_dict):
             aa = "R"
         elif aa == "J":
             aa = "L"
-        elif aa == "X":
-            aa = "N"
 
         onehot += [aa_dict[aa]]
 
@@ -68,7 +70,12 @@ def fasta_process(fasta_fn):
                 pass
 
             else:
-                parsed_seqs.append(line[0:100])
+                l = len(line)
+                if l > 1000:
+                    parsed_seqs.append(line[0:500] + line[l-500:l])
+
+                else:
+                    parsed_seqs.append(line[0:l] + "X"*(1000-l))
 
     return parsed_seqs
 
@@ -81,7 +88,7 @@ for file in seqfiles:
 
 total_tensor = []
 
-aa_dict = get_1h_dict()
+aa_dict = get_1h_dict(aa_string)
 
 for idx, sub_loc in enumerate(all_seqs):
 
@@ -91,24 +98,15 @@ for idx, sub_loc in enumerate(all_seqs):
     for seq in sub_loc:
         total_tensor.append((sum(seq2onehot(seq, aa_dict), []), sublabel))
 
+print "Total number of sequences: {}".format(len(total_tensor))
 
-print len(total_tensor)
+train_n = int(round(0.8 * len(total_tensor), 0))
 
-idxs = []
-
-for i in range(len(total_tensor)):
-    if len(total_tensor[i][0]) == 2200:
-        idxs.append(i)
-
-total_tensor = [total_tensor[i] for i in idxs]
-
-train_idxs = np.random.choice(len(total_tensor), 0.8 * len(total_tensor),
-                              replace=False)
+train_idxs = np.random.choice(len(total_tensor), train_n, replace=False)
 test_idxs = list(set(range(len(total_tensor))) - set(train_idxs))
 
 train_tensor = [total_tensor[i] for i in train_idxs]
 test_tensor = [total_tensor[i] for i in test_idxs]
 
-"""
-class LocDataset()
-"""
+print "Sequences in training set: {}".format(len(train_tensor))
+print "Sequences in test set: {}\n".format(len(test_tensor))
