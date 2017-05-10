@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import preprocess
 
-n_labels = 10
+n_labels = 11
 aa_vec_len = 21
 seq_len = 1000
 n_iters = 2000
@@ -91,6 +91,7 @@ with tf.name_scope("crossentropy"):
         tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
     tf.summary.scalar("crossentropy", cross_entropy)
 
+
 with tf.name_scope("train"):
     train_step = tf.train.GradientDescentOptimizer(learn_step).\
         minimize(cross_entropy)
@@ -99,26 +100,22 @@ with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
-
+"""
 summ = tf.summary.merge_all()
 writer = tf.summary.FileWriter("/home/alejandro/Documents/GitHub/Thesis/logs")
 writer.add_graph(sess.graph)
+"""
 
 for i in range(n_iters):
-    i += 1
     a, b = get_batch(input_tensor, n=minibatch_size)
     train_step.run(feed_dict={x: a, y_: b})
-    tf.summary.scalar("Cross Entropy", cross_entropy)
+    # [cross_entropy, s] = sess.run([cross_entropy, summ],
+    #                              feed_dict={x: a, y_: b})
+    # writer.add_summary(s, i)
 
-    """
-    if i % 5 == 0:
-        [train_accuracy, s] = sess.run([accuracy, summ],
-                                       feed_dict={x: a, y_: b})
-        writer.add_summary(s, i)
-    """
-
-    if i % 100 == 0 or i == 1:  # Check only in iterations multiple of 100
-        a, b = get_batch(input_tensor, n=len(input_tensor))  # Check in full train set
+    if i % 100 == 0:  # Check only in iterations multiple of 100
+        # Check in full train set
+        a, b = get_batch(input_tensor, n=len(input_tensor))
         train_acc = accuracy.eval(feed_dict={x: a, y_: b})
         test_acc = accuracy.eval(feed_dict={x: x_test, y_: y_test})
         print "Iteration number " + str(i) + ":\n"
