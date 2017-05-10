@@ -3,15 +3,31 @@
 from __future__ import division
 import numpy as np
 import tensorflow as tf
+import os
 import preprocess
+from time import gmtime, strftime
 
+datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+
+curr_dir = os.getcwd()
+
+input_tensor = preprocess.train_tensor  # Import train set
+
+test_set = preprocess.test_tensor
+
+trainset_size = len(input_tensor)
 n_labels = 11
 aa_vec_len = 21
 seq_len = 1000
-n_iters = 2000
+n_epochs = 400
 minibatch_size = 500
 learn_step = 0.5
+iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
 
+# Create logs directory for visualization in TensorBoard
+logdir = "/logs/{}-{}-{}".format(datetime, learn_step, minibatch_size)
+os.makedirs(curr_dir + logdir + "/train")
+os.makedirs(curr_dir + logdir + "/test")
 
 def get_batch(tensor, n=100):
     """Gets a minibatch from a tensor
@@ -35,20 +51,16 @@ def weight_variable(shape, name="W"):
     """
 
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
+
 
 def bias_variable(shape, name="B"):
     """Provides a tensor of bias variables with value 0.1"""
 
-
     initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
 
 
-
-input_tensor = preprocess.train_tensor  # Import train set
-
-test_set = preprocess.test_tensor
 
 x_test = [test_set[i][0] for i in range(len(test_set))]
 y_test = [test_set[i][1] for i in range(len(test_set))]
@@ -78,8 +90,9 @@ def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
 
 
 # Define variables of the network:
-x = tf.placeholder(tf.float32, [None, seq_len * aa_vec_len], name="x")
-y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
+with tf.name_scope("input"):
+    x = tf.placeholder(tf.float32, [None, seq_len * aa_vec_len], name="x")
+    y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
 
 y = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=False, name="fc")
 
@@ -100,27 +113,32 @@ with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
-"""
-summ = tf.summary.merge_all()
-writer = tf.summary.FileWriter("/home/alejandro/Documents/GitHub/Thesis/logs")
-writer.add_graph(sess.graph)
-"""
 
-for i in range(n_iters):
+summ = tf.summary.merge_all()
+train_writer = tf.summary.FileWriter(curr_dir + logdir + "/train")
+train_writer.add_graph(sess.graph)
+test_writer = tf.summary.FileWriter(curr_dir + logdir + "/test")
+epoch_nr = 0
+
+for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
     train_step.run(feed_dict={x: a, y_: b})
-    # [cross_entropy, s] = sess.run([cross_entropy, summ],
-    #                              feed_dict={x: a, y_: b})
-    # writer.add_summary(s, i)
+    _, s = sess.run([accuracy, summ], feed_dict={x: a, y_: b})
+    train_writer.add_summary(s, i)
 
-    if i % 100 == 0:  # Check only in iterations multiple of 100
+    if i % iters_x_epoch == 0:
+        epoch_nr += 1
         # Check in full train set
         a, b = get_batch(input_tensor, n=len(input_tensor))
         train_acc = accuracy.eval(feed_dict={x: a, y_: b})
         test_acc = accuracy.eval(feed_dict={x: x_test, y_: y_test})
-        print "Iteration number " + str(i) + ":\n"
-        print "Train accuracy: {}%\t Test Accuracy: {}%\n".format(
-            round(train_acc*100, 3), round(test_acc*100, 2))
+        xent = cross_entropy.eval(feed_dict={x: a, y_: b})
+        _, t = sess.run([accuracy, summ],
+                        feed_dict={x: x_test, y_: y_test})
+        test_writer.add_summary(t, i)
+        print "Epoch number " + str(epoch_nr) + ":\n"
+        print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
+            format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
 
         if train_acc == 1:
             break
