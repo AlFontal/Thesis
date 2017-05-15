@@ -21,11 +21,15 @@ aa_vec_len = 21
 seq_len = 1000
 n_epochs = 400
 minibatch_size = 500
-learn_step = 0.5
+learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
+drop_prob = 0.5
+
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}".format(datetime, learn_step, minibatch_size)
+logdir = "/logs/{}-{}-{}-drop{}-fc_1l".format(datetime, learn_step,
+                                              minibatch_size, drop_prob)
+
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
 
@@ -93,8 +97,11 @@ def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
 with tf.name_scope("input"):
     x = tf.placeholder(tf.float32, [None, seq_len * aa_vec_len], name="x")
     y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
+    keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
-y = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=False, name="fc")
+fc = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=False, name="fc")
+y = tf.nn.dropout(fc, keep_prob)
+
 
 tf.global_variables_initializer().run()  # Initialize variables
 
@@ -122,19 +129,26 @@ epoch_nr = 0
 
 for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
-    train_step.run(feed_dict={x: a, y_: b})
-    _, s = sess.run([accuracy, summ], feed_dict={x: a, y_: b})
+    train_step.run(feed_dict={x: a, y_: b, keep_prob: drop_prob})
+
+    _, s = sess.run([accuracy, summ],
+                    feed_dict={x: a, y_: b, keep_prob: 1})
     train_writer.add_summary(s, i)
 
     if i % iters_x_epoch == 0:
         epoch_nr += 1
         # Check in full train set
         a, b = get_batch(input_tensor, n=len(input_tensor))
-        train_acc = accuracy.eval(feed_dict={x: a, y_: b})
-        test_acc = accuracy.eval(feed_dict={x: x_test, y_: y_test})
-        xent = cross_entropy.eval(feed_dict={x: a, y_: b})
+        train_acc = accuracy.eval\
+            (feed_dict={x: a, y_: b, keep_prob: 1})
+        test_acc = accuracy.eval\
+            (feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+        xent = cross_entropy.eval\
+            (feed_dict={x: a, y_: b, keep_prob: 1})
+
         _, t = sess.run([accuracy, summ],
-                        feed_dict={x: x_test, y_: y_test})
+                        feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+
         test_writer.add_summary(t, i)
         print "Epoch number " + str(epoch_nr) + ":\n"
         print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
