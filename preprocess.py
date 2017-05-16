@@ -10,7 +10,7 @@ __author__ = 'Alejandro Fontal'
 curr_dir = os.getcwd()
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
-aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
+aa_string = "ARNDCEQGHILKMFPSTWYV"  # 20 aa + X
 
 
 def get_1h_dict(aa_string):
@@ -30,7 +30,19 @@ def get_1h_dict(aa_string):
         else:
             aa_dict[aa] = [1] + np.zeros(len(aa_string)-1).tolist()
 
+    aa_dict["X"] = np.zeros(len(aa_string)).tolist()
+
+    with open("aa_propierties.csv") as csvfile:
+        aa_props = csv.reader(csvfile)
+        for idx, row in enumerate(aa_props):
+            if idx > 0:
+                aa = row[0]
+                props = row[1:]
+                aa_dict[aa] += map(float, props)
+
     return aa_dict
+
+
 
 
 def seq2onehot(seq, aa_dict):

@@ -17,7 +17,7 @@ test_set = preprocess.test_tensor
 
 trainset_size = len(input_tensor)
 n_labels = 11
-aa_vec_len = 21
+aa_vec_len = 26
 seq_len = 1000
 n_epochs = 4000
 minibatch_size = 250
