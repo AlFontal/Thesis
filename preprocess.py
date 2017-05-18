@@ -23,7 +23,7 @@ def get_1h_dict(aa_string, add_props=True):
     """
 
     aa_dict = {}
-    """
+
     for idx, aa in enumerate(aa_string):
 
         if idx > 0:
@@ -31,10 +31,10 @@ def get_1h_dict(aa_string, add_props=True):
                           np.zeros(len(aa_string)-idx).tolist()
         else:
             aa_dict[aa] = [1] + np.zeros(len(aa_string)-1).tolist()
-    """
+
 
     if add_props:
-        with open("aa_propierties") as csvfile:
+        with open("aa_propierties_BLOSUM.csv") as csvfile:
             aa_props = csv.reader(csvfile)
             for idx, row in enumerate(aa_props):
                 if idx > 0:

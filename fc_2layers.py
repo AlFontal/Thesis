@@ -24,10 +24,10 @@ n_epochs = 4000
 minibatch_size = 500
 learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
-drop_prob = 0.8
+drop_prob = 1
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_2l(100x10)(propsOnly)-AdamNoRelu".format(datetime, learn_step,
+logdir = "/logs/{}-{}-{}-drop{}-fc_2l(100x10)(props+seq+BLO)-AdamNoRelu".format(datetime, learn_step,
                                           minibatch_size, drop_prob)
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
