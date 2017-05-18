@@ -6,6 +6,7 @@ import tensorflow as tf
 import os
 import preprocess
 from time import gmtime, strftime
+from sys import argv
 
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
@@ -17,16 +18,16 @@ test_set = preprocess.test_tensor
 
 trainset_size = len(input_tensor)
 n_labels = 11
-aa_vec_len = 26
+aa_vec_len = len(preprocess.aa_dict.values()[0])
 seq_len = 1000
 n_epochs = 4000
-minibatch_size = 250
+minibatch_size = 500
 learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
-drop_prob = 1
+drop_prob = 0.8
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_2l".format(datetime, learn_step,
+logdir = "/logs/{}-{}-{}-drop{}-fc_2l(100x10)(propsOnly)-AdamNoRelu".format(datetime, learn_step,
                                           minibatch_size, drop_prob)
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
@@ -99,13 +100,12 @@ with tf.name_scope("input"):
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
 
-fc1 = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=True, name="fc1")
+fc1 = fc_layer(x, seq_len * aa_vec_len, 100, relu=False, name="fc1")
 fc1_drop = tf.nn.dropout(fc1, keep_prob)
-y = fc_layer(fc1_drop, n_labels, n_labels, relu=False, name="fc2")
+y = fc_layer(fc1_drop, 100, n_labels, relu=False, name="fc2")
 
-tf.global_variables_initializer().run()  # Initialize variables
 
-#  Define cost_function (cross entropy):
+# Define cost_function (cross entropy):
 with tf.name_scope("crossentropy"):
     cross_entropy = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
@@ -113,7 +113,7 @@ with tf.name_scope("crossentropy"):
 
 
 with tf.name_scope("train"):
-    train_step = tf.train.GradientDescentOptimizer(learn_step).\
+    train_step = tf.train.AdamOptimizer(learn_step).\
         minimize(cross_entropy)
 
 with tf.name_scope("accuracy"):
@@ -121,12 +121,16 @@ with tf.name_scope("accuracy"):
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
 
+
+tf.global_variables_initializer().run()  # Initialize variables
+
 summ = tf.summary.merge_all()
 train_writer = tf.summary.FileWriter(curr_dir + logdir + "/train")
 train_writer.add_graph(sess.graph)
 test_writer = tf.summary.FileWriter(curr_dir + logdir + "/test")
 epoch_nr = 0
-
+max_test_acc = 0
+best_train_acc = 0
 for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
     train_step.run(feed_dict={x: a, y_: b, keep_prob: drop_prob})
@@ -149,12 +153,18 @@ for i in range(n_epochs * iters_x_epoch):
         _, t = sess.run([accuracy, summ],
                         feed_dict={x: x_test, y_: y_test, keep_prob: 1})
 
+        if test_acc > max_test_acc:
+            max_test_acc = test_acc
+            best_train_acc = train_acc
         test_writer.add_summary(t, i)
-        print "Epoch number " + str(epoch_nr) + ":\n"
-        print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
-            format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
+        # print "Epoch number " + str(epoch_nr) + ":\n"
+        # print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
+        #    format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
 
-        if train_acc == 1:
+        if train_acc > 0.98:
+            print "Best Test Accuracy achieved: {}% at a Training Accuracy" \
+                  " of {}%\n".format(round(max_test_acc * 100, 2),
+                                     round(best_train_acc * 100, 2))
             break
 
 

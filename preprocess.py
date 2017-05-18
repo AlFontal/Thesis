@@ -3,6 +3,8 @@
 from __future__ import division
 import numpy as np
 import os
+import csv
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 __author__ = 'Alejandro Fontal'
@@ -10,10 +12,10 @@ __author__ = 'Alejandro Fontal'
 curr_dir = os.getcwd()
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
-aa_string = "ARNDCEQGHILKMFPSTWYV"  # 20 aa + X
+aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa
+add_props = True
 
-
-def get_1h_dict(aa_string):
+def get_1h_dict(aa_string, add_props=True):
     """
     Given a string of unique characters, generates dictionary of 1-hot vectors
     with characters as keys and vectors as values.
@@ -21,7 +23,7 @@ def get_1h_dict(aa_string):
     """
 
     aa_dict = {}
-
+    """
     for idx, aa in enumerate(aa_string):
 
         if idx > 0:
@@ -29,16 +31,16 @@ def get_1h_dict(aa_string):
                           np.zeros(len(aa_string)-idx).tolist()
         else:
             aa_dict[aa] = [1] + np.zeros(len(aa_string)-1).tolist()
+    """
 
-    aa_dict["X"] = np.zeros(len(aa_string)).tolist()
-
-    with open("aa_propierties.csv") as csvfile:
-        aa_props = csv.reader(csvfile)
-        for idx, row in enumerate(aa_props):
-            if idx > 0:
-                aa = row[0]
-                props = row[1:]
-                aa_dict[aa] += map(float, props)
+    if add_props:
+        with open("aa_propierties") as csvfile:
+            aa_props = csv.reader(csvfile)
+            for idx, row in enumerate(aa_props):
+                if idx > 0:
+                    aa = row[0]
+                    props = row[1:]
+                    aa_dict[aa] = map(float, props)
 
     return aa_dict
 
@@ -100,7 +102,7 @@ for file in seqfiles:
 
 total_tensor = []
 
-aa_dict = get_1h_dict(aa_string)
+aa_dict = get_1h_dict(aa_string, add_props=add_props)
 
 for idx, sub_loc in enumerate(all_seqs):
 
@@ -119,6 +121,5 @@ test_idxs = list(set(range(len(total_tensor))) - set(train_idxs))
 
 train_tensor = [total_tensor[i] for i in train_idxs]
 test_tensor = [total_tensor[i] for i in test_idxs]
-
-print "Sequences in training set: {}".format(len(train_tensor))
-print "Sequences in test set: {}\n".format(len(test_tensor))
+# print "Sequences in training set: {}".format(len(train_tensor))
+# print "Sequences in test set: {}\n".format(len(test_tensor))

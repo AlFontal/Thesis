@@ -17,17 +17,17 @@ test_set = preprocess.test_tensor
 
 trainset_size = len(input_tensor)
 n_labels = 11
-aa_vec_len = 26
+aa_vec_len = len(preprocess.aa_dict.values()[0])
 seq_len = 1000
 n_epochs = 400
 minibatch_size = 500
-learn_step = 0.1
+learn_step = 0.2
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
-drop_prob = 0.5
+drop_prob = 1
 
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_1l".format(datetime, learn_step,
+logdir = "/logs/{}-{}-{}-drop{}-fc_1l100(propsOnly)".format(datetime, learn_step,
                                               minibatch_size, drop_prob)
 
 os.makedirs(curr_dir + logdir + "/train")
@@ -99,11 +99,10 @@ with tf.name_scope("input"):
     y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
-fc = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=False, name="fc")
-y = tf.nn.dropout(fc, keep_prob)
+y = fc_layer(x, seq_len * aa_vec_len, n_labels, relu=False, name="fc")
+#y = tf.nn.dropout(fc, keep_prob)
 
 
-tf.global_variables_initializer().run()  # Initialize variables
 
 #  Define cost_function (cross entropy):
 with tf.name_scope("crossentropy"):
@@ -113,19 +112,23 @@ with tf.name_scope("crossentropy"):
 
 
 with tf.name_scope("train"):
-    train_step = tf.train.GradientDescentOptimizer(learn_step).\
-        minimize(cross_entropy)
+    train_step = tf.train.AdamOptimizer(learn_step).minimize(cross_entropy)
 
 with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
 
+tf.global_variables_initializer().run()  # Initialize variables
+
+
 summ = tf.summary.merge_all()
 train_writer = tf.summary.FileWriter(curr_dir + logdir + "/train")
 train_writer.add_graph(sess.graph)
 test_writer = tf.summary.FileWriter(curr_dir + logdir + "/test")
 epoch_nr = 0
+max_test_acc = 0
+best_train_acc = 0
 
 for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
@@ -149,12 +152,18 @@ for i in range(n_epochs * iters_x_epoch):
         _, t = sess.run([accuracy, summ],
                         feed_dict={x: x_test, y_: y_test, keep_prob: 1})
 
+        if test_acc > max_test_acc:
+            max_test_acc = test_acc
+            best_train_acc = train_acc
         test_writer.add_summary(t, i)
-        print "Epoch number " + str(epoch_nr) + ":\n"
-        print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
-            format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
+        # print "Epoch number " + str(epoch_nr) + ":\n"
+        # print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
+        #   format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
 
-        if train_acc == 1:
+        if train_acc > 0.98:
+            print "Best Test Accuracy achieved: {}% at a Training Accuracy" \
+                  " of {}%\n".format(round(max_test_acc * 100, 2),
+                                     round(best_train_acc * 100, 2))
             break
 
 
