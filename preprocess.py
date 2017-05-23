@@ -13,9 +13,10 @@ curr_dir = os.getcwd()
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
 aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa
-add_props = True
+props_file = "aa_propierties.csv"
+add_props = False
 
-def get_1h_dict(aa_string, add_props=True):
+def get_1h_dict(aa_string, props_file, add_props=True):
     """
     Given a string of unique characters, generates dictionary of 1-hot vectors
     with characters as keys and vectors as values.
@@ -32,9 +33,8 @@ def get_1h_dict(aa_string, add_props=True):
         else:
             aa_dict[aa] = [1] + np.zeros(len(aa_string)-1).tolist()
 
-
     if add_props:
-        with open("aa_propierties_BLOSUM.csv") as csvfile:
+        with open(props_file) as csvfile:
             aa_props = csv.reader(csvfile)
             for idx, row in enumerate(aa_props):
                 if idx > 0:
@@ -102,7 +102,7 @@ for file in seqfiles:
 
 total_tensor = []
 
-aa_dict = get_1h_dict(aa_string, add_props=add_props)
+aa_dict = get_1h_dict(aa_string, props_file, add_props=add_props)
 
 for idx, sub_loc in enumerate(all_seqs):
 
@@ -112,7 +112,7 @@ for idx, sub_loc in enumerate(all_seqs):
     for seq in sub_loc:
         total_tensor.append((sum(seq2onehot(seq, aa_dict), []), sublabel))
 
-print "Total number of sequences: {}".format(len(total_tensor))
+# print "Total number of sequences: {}".format(len(total_tensor))
 
 train_n = int(round(0.8 * len(total_tensor), 0))
 
@@ -121,5 +121,7 @@ test_idxs = list(set(range(len(total_tensor))) - set(train_idxs))
 
 train_tensor = [total_tensor[i] for i in train_idxs]
 test_tensor = [total_tensor[i] for i in test_idxs]
+
 # print "Sequences in training set: {}".format(len(train_tensor))
 # print "Sequences in test set: {}\n".format(len(test_tensor))
+

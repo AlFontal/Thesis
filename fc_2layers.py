@@ -24,11 +24,12 @@ n_epochs = 4000
 minibatch_size = 500
 learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
-drop_prob = 1
-
+drop_prob = argv[1] if argv[1] else 1
+n_units_1 = argv[2] if argv[2] else 100
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_2l(100x10)(props+seq+BLO)-AdamNoRelu".format(datetime, learn_step,
-                                          minibatch_size, drop_prob)
+logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq)-AdamNoRelu".format(
+    datetime, learn_step, minibatch_size, drop_prob, n_units_1)
+
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
 
@@ -120,7 +121,6 @@ with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
-
 
 tf.global_variables_initializer().run()  # Initialize variables
 

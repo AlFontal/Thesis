@@ -27,7 +27,7 @@ drop_prob = 1
 
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_1l100(propsOnly)".format(datetime, learn_step,
+logdir = "/logs/{}-{}-{}-drop{}-fc_1l100(onlySeq)".format(datetime, learn_step,
                                               minibatch_size, drop_prob)
 
 os.makedirs(curr_dir + logdir + "/train")
