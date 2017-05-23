@@ -93,10 +93,8 @@ def fasta_process(fasta_fn):
                     # Add X's in the middle, keeping the ends.
                     half = l // 2
                     res = l % 2
-                    parsed_seqs.append(line[0:half + res] + "X"*(1000-l) +
-                                       line[1000-half:])
-
-
+                    parsed_seqs.append(line[0:half+res] + "X"*(1000-l) +
+                                       line[l-half:])
 
     return parsed_seqs
 
