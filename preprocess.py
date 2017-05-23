@@ -86,10 +86,17 @@ def fasta_process(fasta_fn):
             else:
                 l = len(line)
                 if l > 1000:
+                    # Keep the N- and C- Terminal ends
                     parsed_seqs.append(line[0:500] + line[l-500:l])
 
                 else:
-                    parsed_seqs.append(line[0:l] + "X"*(1000-l))
+                    # Add X's in the middle, keeping the ends.
+                    half = l // 2
+                    res = l % 2
+                    parsed_seqs.append(line[0:half + res] + "X"*(1000-l) +
+                                       line[1000-half:])
+
+
 
     return parsed_seqs
 
@@ -124,4 +131,5 @@ test_tensor = [total_tensor[i] for i in test_idxs]
 
 # print "Sequences in training set: {}".format(len(train_tensor))
 # print "Sequences in test set: {}\n".format(len(test_tensor))
+
 
