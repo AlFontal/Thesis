@@ -15,6 +15,7 @@ seqfiles = os.listdir(seqdir)
 aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa
 props_file = "aa_propierties.csv"
 add_props = False
+seq_len = 1000
 
 def get_1h_dict(aa_string, props_file, add_props=True):
     """
@@ -70,7 +71,7 @@ def seq2onehot(seq, aa_dict):
     return onehot
 
 
-def fasta_process(fasta_fn):
+def fasta_process(fasta_fn, seq_len):
     """
     :param fasta_fn: Filename of the FASTA file to parse
     :return: A list containing the sequences in the FASTA file.
@@ -87,45 +88,73 @@ def fasta_process(fasta_fn):
                 l = len(line)
                 if l > 1000:
                     # Keep the N- and C- Terminal ends
-                    parsed_seqs.append(line[0:500] + line[l-500:l])
+                    parsed_seqs.append(line[0:seq_len//2] + line[l-seq_len:l])
 
                 else:
                     # Add X's in the middle, keeping the ends.
                     half = l // 2
                     res = l % 2
-                    parsed_seqs.append(line[0:half+res] + "X"*(1000-l) +
+                    parsed_seqs.append(line[0:half+res] + "X"*(seq_len-l) +
                                        line[l-half:])
 
     return parsed_seqs
 
 
-all_seqs = []
+class DataSet:
+    def __init__(self, seqdir, props_file, seq_len=1000):
+        self.seqfiles = os.listdir(seqdir)
+        self.aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
+        self.aa_dict = get_1h_dict(self.aa_string, props_file,
+                                   add_props=add_props)
+        self.labels = [i.replace(".fasta", "") for i in self.seqfiles]
+        self.all_seqs = [fasta_process(seqdir + x, seq_len)
+                         for x in self.seqfiles]
+        self.train_seqs = []
+        self.test_seqs = []
+        self.train_tensor = []
+        self.test_tensor = []
 
-for file in seqfiles:
-    all_seqs.append(fasta_process(seqdir+file))
+        for seqs in self.all_seqs:  # for seqs belonging to one specific label
+            train_n = int(round(0.8 * len(seqs), 0))
+            train_idxs = np.random.choice(len(seqs), train_n, replace=False)
+            test_idxs = list(set(range(len(seqs))) - set(train_idxs))
+            self.train_seqs.append([seqs[i] for i in train_idxs])
+            self.test_seqs.append([seqs[i] for i in test_idxs])
 
+        for idx, sub_loc in enumerate(self.train_seqs):
+            sublabel = np.zeros(len(self.train_seqs))
+            sublabel[idx] = 1
 
-total_tensor = []
+            for seq in sub_loc:
+                self.train_tensor.append(
+                    (sum(seq2onehot(seq, self.aa_dict), []), sublabel))
 
-aa_dict = get_1h_dict(aa_string, props_file, add_props=add_props)
+        for idx, sub_loc in enumerate(self.test_seqs):
+            sublabel = np.zeros(len(self.test_seqs))
+            sublabel[idx] = 1
+            sub_list = []
 
-for idx, sub_loc in enumerate(all_seqs):
+            for seq in sub_loc:
+                sub_list.append(
+                    [sum(seq2onehot(seq, self.aa_dict), []), sublabel])
 
-    sublabel = np.zeros(len(all_seqs))
-    sublabel[idx] = 1
+            self.test_tensor.append(sub_list)
 
-    for seq in sub_loc:
-        total_tensor.append((sum(seq2onehot(seq, aa_dict), []), sublabel))
+        self.test_dict = {}
+        for idx, label in enumerate(self.labels):
+            self.test_dict[label] = self.test_tensor[idx]
 
-# print "Total number of sequences: {}".format(len(total_tensor))
+        print len(self.test_tensor)
 
-train_n = int(round(0.8 * len(total_tensor), 0))
+        self.test_tensor = [seq for subloc in self.test_tensor for seq in
+                            subloc]
 
-train_idxs = np.random.choice(len(total_tensor), train_n, replace=False)
-test_idxs = list(set(range(len(total_tensor))) - set(train_idxs))
+        print len(self.test_tensor)
 
-train_tensor = [total_tensor[i] for i in train_idxs]
-test_tensor = [total_tensor[i] for i in test_idxs]
+    def print_labels(self):
+        for label in self.labels:
+            print label
+
 
 # print "Sequences in training set: {}".format(len(train_tensor))
 # print "Sequences in test set: {}\n".format(len(test_tensor))

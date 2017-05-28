@@ -8,17 +8,20 @@ import preprocess
 from time import gmtime, strftime
 from sys import argv
 
+
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 curr_dir = os.getcwd()
 
-input_tensor = preprocess.train_tensor  # Import train set
-
-test_set = preprocess.test_tensor
+dataset = preprocess.DataSet(seqdir, props_file, seq_len)
+test_dict = dataset.test_dict
+input_tensor = dataset.train_tensor  # Import train set
+test_set = dataset.test_tensor
+labels = dataset.labels
 
 trainset_size = len(input_tensor)
-n_labels = 11
-aa_vec_len = len(preprocess.aa_dict.values()[0])
+n_labels = len(labels)
+aa_vec_len = len(dataset.aa_dict.values()[0])
 seq_len = 1000
 n_epochs = 4000
 minibatch_size = 500
@@ -26,6 +29,9 @@ learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
 drop_prob = argv[1] if argv[1] else 1
 n_units_1 = argv[2] if argv[2] else 100
+print_progress = False
+
+
 # Create logs directory for visualization in TensorBoard
 logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq)-AdamNoRelu".format(
     datetime, learn_step, minibatch_size, drop_prob, n_units_1)
@@ -128,9 +134,21 @@ summ = tf.summary.merge_all()
 train_writer = tf.summary.FileWriter(curr_dir + logdir + "/train")
 train_writer.add_graph(sess.graph)
 test_writer = tf.summary.FileWriter(curr_dir + logdir + "/test")
+
 epoch_nr = 0
 max_test_acc = 0
 best_train_acc = 0
+
+class_dict = {}
+writers_dict = {}
+for label in labels:
+    class_x = [test_dict[label][i][0] for i in range(len(test_dict))]
+    class_y = [test_dict[label][i][1] for i in range(len(test_dict))]
+    class_dict[label] = (class_x, class_y)
+    writers_dict[label] = tf.summary.FileWriter(curr_dir + logdir
+                                                          + "/" + label)
+
+
 for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
     train_step.run(feed_dict={x: a, y_: b, keep_prob: drop_prob})
@@ -147,6 +165,7 @@ for i in range(n_epochs * iters_x_epoch):
             (feed_dict={x: a, y_: b, keep_prob: 1})
         test_acc = accuracy.eval\
             (feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+
         xent = cross_entropy.eval\
             (feed_dict={x: a, y_: b, keep_prob: 1})
 
@@ -156,10 +175,24 @@ for i in range(n_epochs * iters_x_epoch):
         if test_acc > max_test_acc:
             max_test_acc = test_acc
             best_train_acc = train_acc
+
         test_writer.add_summary(t, i)
-        # print "Epoch number " + str(epoch_nr) + ":\n"
-        # print "Train accuracy: {}%\t Test Accuracy: {}%\t CrossEntropy: {}\n".\
-        #    format(round(train_acc*100, 3), round(test_acc*100, 2), xent)
+
+        for label in labels:
+            class_x, class_y = class_dict[label]
+            acc = accuracy.eval(feed_dict=
+                                {x: class_x, y_: class_y, keep_prob: 1})
+
+            _, c = sess.run([accuracy, summ],
+                            feed_dict={x: class_x, y_: class_y, keep_prob: 1})
+
+            writers_dict[label].add_summary(c, i)
+
+        if print_progress:
+            print "Epoch number " + str(epoch_nr) + ":\n"
+            print "Train accuracy: {}%\t Test Accuracy: {}% \t" \
+                  " CrossEntropy: {}\n".format(round(train_acc*100, 3),
+                   round(test_acc*100, 2),  xent)
 
         if train_acc > 0.98:
             print "Best Test Accuracy achieved: {}% at a Training Accuracy" \
