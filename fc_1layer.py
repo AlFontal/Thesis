@@ -6,7 +6,7 @@ import tensorflow as tf
 import os
 import preprocess
 from time import gmtime, strftime
-import argv
+from sys import argv
 
 
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
@@ -16,7 +16,7 @@ seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
 props_file = "aa_propierties.csv"
 add_props = True
-seq_len = argv[1]
+seq_len = int(argv[1])
 
 
 dataset = preprocess.DataSet(seqdir, props_file, add_props, seq_len)
@@ -30,7 +30,6 @@ dataset = preprocess.DataSet(seqdir, props_file, seq_len)
 trainset_size = len(input_tensor)
 n_labels = len(labels)
 aa_vec_len = len(dataset.aa_dict.values()[0])
-print aa_vec_len
 n_epochs = 400
 minibatch_size = 500
 learn_step = 0.2

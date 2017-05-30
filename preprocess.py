@@ -65,7 +65,7 @@ def seq2onehot(seq, aa_dict):
     return onehot
 
 
-def fasta_process(fasta_fn, seq_len):
+def fasta_parse(fasta_fn):
     """
     :param fasta_fn: Filename of the FASTA file to parse
     :return: A list containing the sequences in the FASTA file.
@@ -75,31 +75,43 @@ def fasta_process(fasta_fn, seq_len):
 
         parsed_seqs = []
         for line in fasta_list:
-            if line.startswith(">"):
-                pass
-
-            else:
-                l = len(line)
-
-                if l > seq_len:
-                    # Keep the N- and C- Terminal ends
-                    half = seq_len // 2
-                    res = seq_len % 2
-                    left = line[0:half + res]
-                    right = line[l - half:]
-                    parsed_seqs.append(left + right)
-
-                else:
-                    # Add X's in the middle, keeping the ends.
-                    half = l // 2
-                    res = l % 2
-                    left = line[0:half + res]
-                    middle = "X" * (seq_len - l)
-                    right = line[l - half:]
-                    parsed_seqs.append(left + middle + right)
+            if not line.startswith(">"):
+                parsed_seqs.append(line)
 
     return parsed_seqs
 
+
+def seq_process(seqs, seq_len):
+    """
+
+    :param seqs: List containing protein sequences
+    :param seq_len: Length of the final processed sequences (integer)
+    :return: List of processed sequences of length= seq_len. Filled with Xs
+    """
+
+    processed_seqs = []
+
+    for seq in seqs:
+        l = len(seq)
+
+        if l > seq_len:
+            # Keep the N- and C- Terminal ends
+            half = seq_len // 2
+            res = seq_len % 2
+            left = seq[0:half + res]
+            right = seq[l - half:]
+            processed_seqs.append(left + right)
+
+        else:
+            # Add X's in the middle, keeping the ends.
+            half = l // 2
+            res = l % 2
+            left = seq[0:half + res]
+            middle = "X" * (seq_len - l)
+            right = seq[l - half:]
+            processed_seqs.append(left + middle + right)
+
+    return processed_seqs
 
 class DataSet:
     def __init__(self, seqdir, props_file, add_props=True, seq_len=1000):
@@ -108,8 +120,8 @@ class DataSet:
         self.aa_dict = get_1h_dict(self.aa_string, props_file,
                                    add_props=add_props)
         self.labels = [i.replace(".fasta", "") for i in self.seqfiles]
-        self.all_seqs = [fasta_process(seqdir + x, seq_len)
-                         for x in self.seqfiles]
+        self.raw_seqs = [fasta_parse(seqdir + x) for x in self.seqfiles]
+        self.all_seqs = [seq_process(x, seq_len) for x in self.raw_seqs]
         self.train_seqs = []
         self.test_seqs = []
         self.train_tensor = []
@@ -148,13 +160,10 @@ class DataSet:
         self.test_tensor = [seq for subloc in self.test_tensor for seq in
                             subloc]
 
-
     def print_labels(self):
         for label in self.labels:
             print label
 
 
-# print "Sequences in training set: {}".format(len(train_tensor))
-# print "Sequences in test set: {}\n".format(len(test_tensor))
 
 
