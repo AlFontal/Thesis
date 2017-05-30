@@ -10,7 +10,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 __author__ = 'Alejandro Fontal'
 
 
-
 def get_1h_dict(aa_string, props_file, add_props=True):
     """
     Given a string of unique characters, generates dictionary of 1-hot vectors
@@ -38,8 +37,6 @@ def get_1h_dict(aa_string, props_file, add_props=True):
                     aa_dict[aa] += map(float, props)
 
     return aa_dict
-
-
 
 
 def seq2onehot(seq, aa_dict):
@@ -112,6 +109,7 @@ def seq_process(seqs, seq_len):
             processed_seqs.append(left + middle + right)
 
     return processed_seqs
+
 
 class DataSet:
     def __init__(self, seqdir, props_file, add_props=True, seq_len=1000):
