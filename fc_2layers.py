@@ -12,8 +12,12 @@ from sys import argv
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 curr_dir = os.getcwd()
-
-dataset = preprocess.DataSet(seqdir, props_file, seq_len)
+seqdir = curr_dir + "/seqs/"
+seqfiles = os.listdir(seqdir)
+props_file = "aa_propierties.csv"
+add_props = True
+seq_len = int(argv[3])
+dataset = preprocess.DataSet(seqdir, props_file, add_props, seq_len)
 test_dict = dataset.test_dict
 input_tensor = dataset.train_tensor  # Import train set
 test_set = dataset.test_tensor
@@ -22,7 +26,6 @@ labels = dataset.labels
 trainset_size = len(input_tensor)
 n_labels = len(labels)
 aa_vec_len = len(dataset.aa_dict.values()[0])
-seq_len = 1000
 n_epochs = 4000
 minibatch_size = 500
 learn_step = 0.1
@@ -33,8 +36,8 @@ print_progress = False
 
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq)-AdamNoRelu".format(
-    datetime, learn_step, minibatch_size, drop_prob, n_units_1)
+logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq+props)seqlen={}".format(
+    datetime, learn_step, minibatch_size, drop_prob, n_units_1, seq_len)
 
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")

@@ -9,13 +9,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 __author__ = 'Alejandro Fontal'
 
-curr_dir = os.getcwd()
-seqdir = curr_dir + "/seqs/"
-seqfiles = os.listdir(seqdir)
-aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa
-props_file = "aa_propierties.csv"
-add_props = False
-seq_len = 1000
+
 
 def get_1h_dict(aa_string, props_file, add_props=True):
     """
@@ -41,7 +35,7 @@ def get_1h_dict(aa_string, props_file, add_props=True):
                 if idx > 0:
                     aa = row[0]
                     props = row[1:]
-                    aa_dict[aa] = map(float, props)
+                    aa_dict[aa] += map(float, props)
 
     return aa_dict
 
@@ -86,22 +80,29 @@ def fasta_process(fasta_fn, seq_len):
 
             else:
                 l = len(line)
-                if l > 1000:
+
+                if l > seq_len:
                     # Keep the N- and C- Terminal ends
-                    parsed_seqs.append(line[0:seq_len//2] + line[l-seq_len:l])
+                    half = seq_len // 2
+                    res = seq_len % 2
+                    left = line[0:half + res]
+                    right = line[l - half:]
+                    parsed_seqs.append(left + right)
 
                 else:
                     # Add X's in the middle, keeping the ends.
                     half = l // 2
                     res = l % 2
-                    parsed_seqs.append(line[0:half+res] + "X"*(seq_len-l) +
-                                       line[l-half:])
+                    left = line[0:half + res]
+                    middle = "X" * (seq_len - l)
+                    right = line[l - half:]
+                    parsed_seqs.append(left + middle + right)
 
     return parsed_seqs
 
 
 class DataSet:
-    def __init__(self, seqdir, props_file, seq_len=1000):
+    def __init__(self, seqdir, props_file, add_props=True, seq_len=1000):
         self.seqfiles = os.listdir(seqdir)
         self.aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
         self.aa_dict = get_1h_dict(self.aa_string, props_file,
@@ -144,12 +145,9 @@ class DataSet:
         for idx, label in enumerate(self.labels):
             self.test_dict[label] = self.test_tensor[idx]
 
-        print len(self.test_tensor)
-
         self.test_tensor = [seq for subloc in self.test_tensor for seq in
                             subloc]
 
-        print len(self.test_tensor)
 
     def print_labels(self):
         for label in self.labels:
