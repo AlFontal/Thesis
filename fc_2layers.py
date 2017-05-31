@@ -26,7 +26,7 @@ labels = dataset.labels
 trainset_size = len(input_tensor)
 n_labels = len(labels)
 aa_vec_len = len(dataset.aa_dict.values()[0])
-n_epochs = 4000
+n_epochs = 1000
 minibatch_size = 500
 learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
@@ -198,9 +198,8 @@ for i in range(n_epochs * iters_x_epoch):
                    round(test_acc*100, 2),  xent)
 
         if train_acc > 0.98:
-            print "Best Test Accuracy achieved: {}% at a Training Accuracy" \
-                  " of {}%\n".format(round(max_test_acc * 100, 2),
-                                     round(best_train_acc * 100, 2))
+
             break
 
-
+print "Best Test Accuracy achieved: {}% at a Training Accuracy of {}%\n".\
+       format(round(max_test_acc * 100, 2), round(best_train_acc * 100, 2))
