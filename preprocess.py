@@ -95,7 +95,7 @@ def seq_process(seqs, seq_len):
             # Keep the N- and C- Terminal ends
             half = seq_len // 2
             res = seq_len % 2
-            left = seq[0:half + res]
+            left = seq[:half + res]
             right = seq[l - half:]
             processed_seqs.append(left + right)
 

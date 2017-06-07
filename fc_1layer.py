@@ -18,14 +18,11 @@ props_file = "aa_propierties.csv"
 add_props = True
 seq_len = int(argv[1])
 
-
 dataset = preprocess.DataSet(seqdir, props_file, add_props, seq_len)
 test_dict = dataset.test_dict
 input_tensor = dataset.train_tensor  # Import train set
 test_set = dataset.test_tensor
 labels = dataset.labels
-dataset = preprocess.DataSet(seqdir, props_file, seq_len)
-
 
 trainset_size = len(input_tensor)
 n_labels = len(labels)

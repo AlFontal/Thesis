@@ -5,13 +5,15 @@ import numpy as np
 import tensorflow as tf
 import os
 import preprocess
+from neural_networks import *
 from time import gmtime, strftime
 from sys import argv
 
 
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-
 curr_dir = os.getcwd()
+
+save_model = True
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
 props_file = "aa_propierties.csv"
@@ -42,64 +44,10 @@ logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq+props)seqlen={}".format(
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
 
-def get_batch(tensor, n=100):
-    """Gets a minibatch from a tensor
-
-    Takes a tensor of shape t = [[[seq_1][lab_1]], ..., [[seq_n][lab_n]]] and
-    randomly takes n samples, returning a tensor x = [[seq_1], ..., [seq_n]]
-    and a tensor y = [[lab_1], ..., [lab_n]].
-    """
-    idxs = np.random.choice(len(tensor), n, replace=False)
-    x = [tensor[i][0] for i in idxs]
-    y = [tensor[i][1] for i in idxs]
-
-    return x, y
-
-
-def weight_variable(shape, name="W"):
-    """Generates weight variables
-
-    Provides a tensor of weight variables obtained from a truncated normal
-    distribution with mean=0 and std=0.1. All values in range [-0.1, 0.1]
-    """
-
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name=name)
-
-
-def bias_variable(shape, name="B"):
-    """Provides a tensor of bias variables with value 0.1"""
-
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial, name=name)
-
-
-
 x_test = [test_set[i][0] for i in range(len(test_set))]
 y_test = [test_set[i][1] for i in range(len(test_set))]
 
 sess = tf.InteractiveSession()  # Start tensorflow session
-
-
-def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
-    """Generates a fully connected layer with biases and weights
-
-    Computes a fully connected layer when provided with an input tensor and
-    returns an output tensor. Input and output channels must be specified.
-    By default, the output uses a ReLu activation function.
-    """
-
-    with tf.name_scope(name):
-        w = weight_variable([input_dim, output_dim])
-        b = bias_variable([output_dim])
-        out = tf.matmul(input_tensor, w) + b
-        tf.summary.histogram("weights", w)
-        tf.summary.histogram("biases", b)
-
-        if relu:
-            return tf.nn.relu(out)
-        else:
-            return out
 
 
 # Define variables of the network:
@@ -151,6 +99,8 @@ for label in labels:
     writers_dict[label] = tf.summary.FileWriter(curr_dir + logdir
                                                           + "/" + label)
 
+# Add ops to save and restore all the variables.
+saver = tf.train.Saver()
 
 for i in range(n_epochs * iters_x_epoch):
     a, b = get_batch(input_tensor, n=minibatch_size)
@@ -201,5 +151,10 @@ for i in range(n_epochs * iters_x_epoch):
 
             break
 
-print "Best Test Accuracy achieved: {}% at a Training Accuracy of {}%\n".\
-       format(round(max_test_acc * 100, 2), round(best_train_acc * 100, 2))
+print str(round(max_test_acc * 100, 2))
+
+
+if save_model:
+    # Save the variables to disk.
+    save_path = saver.save(sess, "." + logdir + "/model.ckpt")
+    print("Model saved in file: %s" % save_path)
