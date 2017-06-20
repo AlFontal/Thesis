@@ -8,7 +8,7 @@ import preprocess
 from neural_networks import *
 from time import gmtime, strftime
 from sys import argv
-
+import pandas as pd
 
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 curr_dir = os.getcwd()
@@ -19,7 +19,9 @@ seqfiles = os.listdir(seqdir)
 props_file = "aa_propierties.csv"
 add_props = True
 seq_len = int(argv[3])
-dataset = preprocess.DataSet(seqdir, props_file, add_props, seq_len)
+dataset = preprocess.DataSet(seqdir, props_file, add_props, seq_len,
+                             flatten=True)
+
 test_dict = dataset.test_dict
 input_tensor = dataset.train_tensor  # Import train set
 test_set = dataset.test_tensor
@@ -34,11 +36,13 @@ learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
 drop_prob = float(argv[1])
 n_units_1 = int(argv[2])
-print_progress = False
-
+print_progress = True
+n_channels = 25
+filter_width = 10
+n_convs = seq_len - filter_width + 1
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-fc_2l({}x11)(seq+props)seqlen={}".format(
+logdir = "/logs/{}-{}-{}-drop{}-conv-fc{}x11)(seq+props)seqlen={}".format(
     datetime, learn_step, minibatch_size, drop_prob, n_units_1, seq_len)
 
 os.makedirs(curr_dir + logdir + "/train")
@@ -49,25 +53,33 @@ y_test = [test_set[i][1] for i in range(len(test_set))]
 
 sess = tf.InteractiveSession()  # Start tensorflow session
 
-
 # Define variables of the network:
 
 with tf.name_scope("input"):
-    x = tf.placeholder(tf.float32, [None, seq_len * aa_vec_len], name="x")
+    x = tf.placeholder(tf.float32, [None, seq_len, aa_vec_len], name="x")
+    x1 = tf.expand_dims(x, -1)
     y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
 
-conv1 = tf.nn.conv
-fc1 = fc_layer(x, seq_len * aa_vec_len, n_units_1, relu=False, name="fc1")
+conv1 = conv_layer(x1, filter_width, aa_vec_len, 1, n_channels, relu=False)
+
+conv2 = tf.reshape(conv1, [-1, seq_len * aa_vec_len * n_channels])
+
+fc1 = fc_layer(conv2, seq_len * aa_vec_len * n_channels,
+               n_units_1, relu=False, name="fc1")
+
 fc1_drop = tf.nn.dropout(fc1, keep_prob)
 y = fc_layer(fc1_drop, n_units_1, n_labels, relu=False, name="fc2")
 
 
 # Define cost_function (cross entropy):
 with tf.name_scope("crossentropy"):
+    # y is the last layer, contains unscaled logits
+    # y_ is a one-hot vector containing the true label
     cross_entropy = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
+    # Unscaled logits are normalized and crossentropy is calculated
     tf.summary.scalar("crossentropy", cross_entropy)
 
 
@@ -79,6 +91,12 @@ with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
+
+with tf.name_scope("confusion_matrix"):
+    lab = tf.argmax(y_, 1)
+    pred = tf.argmax(y, 1)
+    conf_mat = tf.contrib.metrics.confusion_matrix(
+                labels=lab, predictions=pred)
 
 tf.global_variables_initializer().run()  # Initialize variables
 
@@ -115,16 +133,22 @@ for i in range(n_epochs * iters_x_epoch):
         epoch_nr += 1
         # Check in full train set
         a, b = get_batch(input_tensor, n=len(input_tensor))
-        train_acc = accuracy.eval\
-            (feed_dict={x: a, y_: b, keep_prob: 1})
-        test_acc = accuracy.eval\
-            (feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+        train_acc = accuracy.eval(
+            feed_dict={x: a, y_: b, keep_prob: 1})
+        test_acc = accuracy.eval(
+            feed_dict={x: x_test, y_: y_test, keep_prob: 1})
 
-        xent = cross_entropy.eval\
-            (feed_dict={x: a, y_: b, keep_prob: 1})
+        xent = cross_entropy.eval(
+            feed_dict={x: a, y_: b, keep_prob: 1})
 
         _, t = sess.run([accuracy, summ],
                         feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+
+        # Generate confusion matrix and make it a Pandas dataframe
+        cm = conf_mat.eval(feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+        df = pd.DataFrame(cm)
+        df.columns = labels
+        df.index = labels
 
         if test_acc > max_test_acc:
             max_test_acc = test_acc
@@ -149,7 +173,7 @@ for i in range(n_epochs * iters_x_epoch):
                    round(test_acc*100, 2),  xent)
 
         if train_acc > 0.98:
-
+            df.to_csv(curr_dir + logdir + "/conf_matrix.csv")
             break
 
 print str(round(max_test_acc * 100, 2))

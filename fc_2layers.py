@@ -3,6 +3,7 @@
 from __future__ import division
 import numpy as np
 import tensorflow as tf
+import pandas as pd
 import os
 import preprocess
 from neural_networks import *
@@ -32,8 +33,8 @@ n_epochs = 1000
 minibatch_size = 500
 learn_step = 0.1
 iters_x_epoch = int(round(trainset_size/minibatch_size, 0))
-drop_prob = argv[1] if argv[1] else 1
-n_units_1 = argv[2] if argv[2] else 100
+drop_prob = float(argv[1])
+n_units_1 = int(argv[2])
 print_progress = False
 
 
@@ -58,9 +59,9 @@ with tf.name_scope("input"):
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
 
-fc1 = fc_layer(x, seq_len * aa_vec_len, 100, relu=False, name="fc1")
+fc1 = fc_layer(x, seq_len * aa_vec_len, n_units_1, relu=False, name="fc1")
 fc1_drop = tf.nn.dropout(fc1, keep_prob)
-y = fc_layer(fc1_drop, 100, n_labels, relu=False, name="fc2")
+y = fc_layer(fc1_drop, n_units_1, n_labels, relu=False, name="fc2")
 
 
 # Define cost_function (cross entropy):
@@ -78,6 +79,12 @@ with tf.name_scope("accuracy"):
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     tf.summary.scalar("accuracy", accuracy)
+
+with tf.name_scope("confusion_matrix"):
+    lab = tf.argmax(y_, 1)
+    pred = tf.argmax(y, 1)
+    conf_mat = tf.contrib.metrics.confusion_matrix(
+        labels=lab, predictions=pred)
 
 tf.global_variables_initializer().run()  # Initialize variables
 
@@ -129,6 +136,11 @@ for i in range(n_epochs * iters_x_epoch):
             max_test_acc = test_acc
             best_train_acc = train_acc
 
+        cm = conf_mat.eval(feed_dict={x: x_test, y_: y_test, keep_prob: 1})
+        df = pd.DataFrame(cm)
+        df.columns = labels
+        df.index = labels
+
         test_writer.add_summary(t, i)
 
         for label in labels:
@@ -147,8 +159,10 @@ for i in range(n_epochs * iters_x_epoch):
                   " CrossEntropy: {}\n".format(round(train_acc*100, 3),
                    round(test_acc*100, 2),  xent)
 
-        if train_acc > 0.98:
+            print df
 
+        if train_acc > 0.98:
+            df.to_csv(curr_dir + logdir + "/conf_matrix.csv")
             break
 
 print str(round(max_test_acc * 100, 2))
@@ -158,3 +172,4 @@ if save_model:
     # Save the variables to disk.
     save_path = saver.save(sess, "." + logdir + "/model.ckpt")
     print("Model saved in file: %s" % save_path)
+

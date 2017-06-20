@@ -112,7 +112,9 @@ def seq_process(seqs, seq_len):
 
 
 class DataSet:
-    def __init__(self, seqdir, props_file, add_props=True, seq_len=1000):
+    def __init__(self, seqdir, props_file, add_props=True, seq_len=1000,
+                 flatten=False):
+
         self.seqfiles = os.listdir(seqdir)
         self.aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
         self.aa_dict = get_1h_dict(self.aa_string, props_file,
@@ -137,8 +139,12 @@ class DataSet:
             sublabel[idx] = 1
 
             for seq in sub_loc:
-                self.train_tensor.append(
-                    (sum(seq2onehot(seq, self.aa_dict), []), sublabel))
+                if flatten:
+                    self.train_tensor.append(
+                        (sum([seq2onehot(seq, self.aa_dict)], []), sublabel))
+                else:
+                    self.train_tensor.append(
+                        (sum(seq2onehot(seq, self.aa_dict), []), sublabel))
 
         for idx, sub_loc in enumerate(self.test_seqs):
             sublabel = np.zeros(len(self.test_seqs))
@@ -146,8 +152,12 @@ class DataSet:
             sub_list = []
 
             for seq in sub_loc:
-                sub_list.append(
-                    [sum(seq2onehot(seq, self.aa_dict), []), sublabel])
+                if flatten:
+                    sub_list.append(
+                        [sum([seq2onehot(seq, self.aa_dict)], []), sublabel])
+                else:
+                    sub_list.append(
+                        [sum(seq2onehot(seq, self.aa_dict), []), sublabel])
 
             self.test_tensor.append(sub_list)
 

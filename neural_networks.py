@@ -54,3 +54,30 @@ def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
             return tf.nn.relu(out)
         else:
             return out
+
+
+def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
+               name="conv", relu=True):
+    """
+
+    :return:
+    """
+
+    with tf.name_scope(name):
+        w = tf.get_variable("weights",
+                            [width, heigth, in_channels, out_channels])
+
+        b = bias_variable([out_channels])
+        conv = tf.nn.conv2d(input_tensor, w,
+                            strides=[1, 1, 1, 1], padding="SAME")
+
+        if relu == False:
+            conv_norelu = conv + b
+
+            return conv_norelu
+        conv_relu = tf.nn.relu(conv + b, name=name)
+
+        tf.summary.histogram("weights", w)
+        tf.summary.histogram("biases", b)
+
+        return conv_relu
