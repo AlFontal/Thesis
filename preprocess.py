@@ -27,6 +27,8 @@ def get_1h_dict(aa_string, props_file, add_props=True):
         else:
             aa_dict[aa] = [1] + np.zeros(len(aa_string)-1).tolist()
 
+    aa_dict["X"] = np.zeros(len(aa_string)).tolist()
+
     if add_props:
         with open(props_file) as csvfile:
             aa_props = csv.reader(csvfile)
@@ -116,7 +118,7 @@ class DataSet:
                  flatten=False):
 
         self.seqfiles = os.listdir(seqdir)
-        self.aa_string = "ARNDCEQGHILKMFPSTWYVX"  # 20 aa + X
+        self.aa_string = "ARNDCEQGHILKMFPSTWYV"  # 20 aa
         self.aa_dict = get_1h_dict(self.aa_string, props_file,
                                    add_props=add_props)
         self.labels = [i.replace(".fasta", "") for i in self.seqfiles]
@@ -171,7 +173,4 @@ class DataSet:
     def print_labels(self):
         for label in self.labels:
             print label
-
-
-
 

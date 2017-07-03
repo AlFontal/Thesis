@@ -2,6 +2,9 @@
 
 import tensorflow as tf
 import numpy as np
+import tflearn.activations as tf_acts
+leaky_relu = tf_acts.leaky_relu
+alpha = 0.1
 
 def get_batch(tensor, n=100):
     """Gets a minibatch from a tensor
@@ -51,7 +54,7 @@ def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
         tf.summary.histogram("biases", b)
 
         if relu:
-            return tf.nn.relu(out)
+            return leaky_relu(out, alpha, name=name)
         else:
             return out
 
@@ -64,7 +67,7 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
     """
 
     with tf.name_scope(name):
-        w = tf.get_variable("weights",
+        w = tf.get_variable("conv_filter_weights",
                             [width, heigth, in_channels, out_channels])
 
         b = bias_variable([out_channels])
@@ -75,7 +78,7 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
             conv_norelu = conv + b
 
             return conv_norelu
-        conv_relu = tf.nn.relu(conv + b, name=name)
+        conv_relu = leaky_relu(conv + b, alpha, name=name)
 
         tf.summary.histogram("weights", w)
         tf.summary.histogram("biases", b)

@@ -42,7 +42,7 @@ filter_width = 10
 n_convs = seq_len - filter_width + 1
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs/{}-{}-{}-drop{}-conv-fc{}x11)(seq+props)seqlen={}".format(
+logdir = "/logs/{}-{}-{}-drop{}-conv-fc{}x11)(seq+props)seqlen={}LEAKY".format(
     datetime, learn_step, minibatch_size, drop_prob, n_units_1, seq_len)
 
 os.makedirs(curr_dir + logdir + "/train")
@@ -62,15 +62,15 @@ with tf.name_scope("input"):
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
 
-conv1 = conv_layer(x1, filter_width, aa_vec_len, 1, n_channels, relu=False)
+conv1 = conv_layer(x1, filter_width, aa_vec_len, 1, n_channels, relu=True)
 
+conv2 = conv_layer(conv1, filter_width, aa_vec_len, 2, n_channels)
 conv2 = tf.reshape(conv1, [-1, seq_len * aa_vec_len * n_channels])
 
-fc1 = fc_layer(conv2, seq_len * aa_vec_len * n_channels,
-               n_units_1, relu=False, name="fc1")
+fc1 = tf.nn.dropout(fc_layer(conv2, seq_len * aa_vec_len * n_channels,
+               n_units_1, relu=True, name="fc1"), keep_prob)
 
-fc1_drop = tf.nn.dropout(fc1, keep_prob)
-y = fc_layer(fc1_drop, n_units_1, n_labels, relu=False, name="fc2")
+y = fc_layer(fc1, n_units_1, n_labels, relu=True, name="fc2")
 
 
 # Define cost_function (cross entropy):

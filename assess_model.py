@@ -2,6 +2,8 @@ from preprocess import *
 from neural_networks import *
 import numpy as np
 import tensorflow as tf
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import os
@@ -17,6 +19,11 @@ n_units_1 = 100
 props_file = "aa_propierties.csv"
 aa_string = "ARNDCEQGHILKMFPSTWYVX"
 aa_dict = get_1h_dict(aa_string, props_file, add_props=True)
+
+if str(argv[1]) == "test":
+    test = True
+else:
+    test = False
 
 def break_seq(seq, w=5):
     """
@@ -106,17 +113,21 @@ saver.restore(sess, "logs/2017-06-16 12:54:32-0.1-500-drop0.6-fc_2l(100x11)"
                     "(seq+props)seqlen=500/model.ckpt")
 
 
-raw_seqs = fasta_parse(seqdir)
+if test:
 
-# raw_seqs = [test_seq, test_seq2, test_seq3]
+    raw_seqs = [test_seq, test_seq2, test_seq3]
+
+else:
+    raw_seqs = fasta_parse(seqdir)
 
 seqs = seq_process(raw_seqs, seq_len)
 
 prog_decile = round(len(seqs)/10)
 
 for n, curr_seq in enumerate(seqs):
-    if n % prog_decile == 0:
-        print "Progress = {0} %".format(str(n * 10 / prog_decile))
+    if not test:
+        if n % prog_decile == 0:
+            print "Progress = {0} %".format(str(n * 10 / prog_decile))
 
     curr_seq = seq_process([curr_seq], seq_len)[0]
     test_seqs5 = break_seq(curr_seq, 5)
@@ -133,17 +144,19 @@ for n, curr_seq in enumerate(seqs):
     lab = [np.zeros(11)]  # Won't be used, but needed to feed value
 
     # Extract output layer of original seq and apply softmax.
-    # Divided by 1000 in order to make softmax results somehow variable.
+    # Scaled in order to make softmax results somehow variable.
 
-    original_out = np.divide(y.eval(
-        feed_dict={x: [t_tens5[0]], y_: lab, keep_prob: 1}), 1000)
-    final_label = tf.nn.softmax(original_out).eval()
+    pre_soft = y.eval(feed_dict={x: [t_tens5[0]], y_: lab, keep_prob: 1})
+    maxval = tf.reduce_max(pre_soft).eval()
+    scaled_pre_soft = np.divide(pre_soft, maxval*0.5)
+    final_label = tf.nn.softmax(scaled_pre_soft).eval()
 
     # Redefine crossentropy, now taking as label the output of the original seq
     with tf.name_scope("crossentropy"):
         cross_entropy = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(labels=final_label,
-                                                logits=np.divide(y, 1000)))
+                                        logits=np.divide(y, maxval*0.5)))
+
         tf.summary.scalar("crossentropy", cross_entropy)
 
     # Calculate crossentropy of original sequence
@@ -188,8 +201,8 @@ plt.ylabel("Increase in CrossEntropy")
 plt.title("CrossEntropy perturbation per position in {} sequences".format(
     str(argv[1])))
 
-blue_patch = mpatches.Patch(color='darkblue', label='window = 15 aa')
-red_patch = mpatches.Patch(color='darkred', label='window = 5 aa')
+blue_patch = mpatches.Patch(color='darkblue', label='window = 5 aa')
+red_patch = mpatches.Patch(color='darkred', label='window = 15 aa')
 plt.legend(handles=[blue_patch, red_patch], loc=1)
 
 plt.savefig("{}.png".format(str(argv[1])))
