@@ -13,7 +13,7 @@ import pandas as pd
 datetime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 curr_dir = os.getcwd()
 
-save_model = False
+save_model = True
 seqdir = curr_dir + "/seqs/"
 seqfiles = os.listdir(seqdir)
 props_file = "aa_propierties.csv"
@@ -64,7 +64,7 @@ with tf.name_scope("input"):
 
 conv1 = conv_layer(x1, filter_width, aa_vec_len, 1, n_channels, relu=True)
 
-conv2 = conv_layer(conv1, filter_width, aa_vec_len, 2, n_channels)
+# conv2 = conv_layer(conv1, filter_width, aa_vec_len, 2, n_channels, name="conv2")
 conv2 = tf.reshape(conv1, [-1, seq_len * aa_vec_len * n_channels])
 
 fc1 = tf.nn.dropout(fc_layer(conv2, seq_len * aa_vec_len * n_channels,
@@ -153,6 +153,10 @@ for i in range(n_epochs * iters_x_epoch):
         if test_acc > max_test_acc:
             max_test_acc = test_acc
             best_train_acc = train_acc
+            if save_model and test_acc > 0.6:
+                # Save the variables to disk.
+                save_path = saver.save(sess, "." + logdir + "/model.ckpt")
+                print("Model saved in file: %s" % save_path)
 
         test_writer.add_summary(t, i)
 
@@ -179,7 +183,4 @@ for i in range(n_epochs * iters_x_epoch):
 print str(round(max_test_acc * 100, 2))
 
 
-if save_model:
-    # Save the variables to disk.
-    save_path = saver.save(sess, "." + logdir + "/model.ckpt")
-    print("Model saved in file: %s" % save_path)
+

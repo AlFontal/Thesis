@@ -67,7 +67,7 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
     """
 
     with tf.name_scope(name):
-        w = tf.get_variable("conv_filter_weights",
+        w = tf.get_variable(name+"-weights",
                             [width, heigth, in_channels, out_channels])
 
         b = bias_variable([out_channels])
