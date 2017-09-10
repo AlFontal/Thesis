@@ -2,8 +2,11 @@
 
 from __future__ import division
 import numpy as np
+import pandas as pd
 import os
 import csv
+import subprocess
+
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -111,6 +114,47 @@ def seq_process(seqs, seq_len):
             processed_seqs.append(left + middle + right)
 
     return processed_seqs
+
+
+def get_pssm_dict(filters_tensor, n_filters, aa_string, aa_vec_len=20):
+    """
+
+    :param filters_tensor: tensor containing the weights of the conv filters
+    :param n_filters: number of filters applied in the conv layer
+    :param aa_vec_len: total number of features
+    :param aa_string: String containing the aa in the same order as tf input
+    :return: dictionary with a df with the pssm for each of the filters
+    """
+    pssm_dict = {}
+    for fn in range(n_filters):    # for each of the filters
+        filt_matrix = np.zeros([len(filters_tensor), aa_vec_len])
+        for aa in range(aa_vec_len):    # for each of the features
+            for pos in range(len(filters_tensor)):    # for each filter pos.
+                # fill matrix with raw values
+                filt_matrix[pos, aa] = filters_tensor[pos][aa][0][fn]
+        # Check which column scores the most, and reshape to make it 1
+        # This way we can check relative importance on a scale from -1 to 1
+        filt_matrix = np.divide(filt_matrix, np.abs(filt_matrix).sum(axis=1).max())
+        # Format to generate pd df exportable to .txt and usable by seq2logo
+        filt_df = pd.DataFrame(filt_matrix)
+        filt_df.columns = list(aa_string)
+        # Store in dictionary object
+        pssm_dict["filter " + str(fn + 1)] = filt_df
+
+    return pssm_dict
+
+def run_seq2logo(input_fn, output_fn):
+
+    cmd = "../../../seq2logo-2.0/Seq2Logo.py -f " + r'"{}"'.format(input_fn) +\
+          " -o {}".format(output_fn) + " -I 5 -u " + \
+          r'"Relative Importance" -S 1 -C 0'
+
+    try:
+        subprocess.check_call(cmd, shell=True)
+        return output_fn
+
+    except subprocess.CalledProcessError:
+        print "Seq2logo encountered an error during execution"
 
 
 class DataSet:

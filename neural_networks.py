@@ -6,6 +6,7 @@ import tflearn.activations as tf_acts
 leaky_relu = tf_acts.leaky_relu
 alpha = 0.1
 
+
 def get_batch(tensor, n=100):
     """Gets a minibatch from a tensor
 
@@ -43,7 +44,7 @@ def fc_layer(input_tensor, input_dim, output_dim, name="fc", relu=True):
 
     Computes a fully connected layer when provided with an input tensor and
     returns an output tensor. Input and output channels must be specified.
-    By default, the output uses a ReLu activation function.
+    By default, the output uses a leaky ReLu activation function.
     """
 
     with tf.name_scope(name):
@@ -67,6 +68,7 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
     """
 
     with tf.name_scope(name):
+
         w = tf.get_variable(name+"-weights",
                             [width, heigth, in_channels, out_channels])
 
@@ -74,13 +76,41 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
         conv = tf.nn.conv2d(input_tensor, w,
                             strides=[1, 1, 1, 1], padding="SAME")
 
-        if relu == False:
+        if not relu:
             conv_norelu = conv + b
 
             return conv_norelu
+
         conv_relu = leaky_relu(conv + b, alpha, name=name)
 
-        tf.summary.histogram("weights", w)
+        tf.summary.histogram("filter_weights", w)
         tf.summary.histogram("biases", b)
 
         return conv_relu
+
+
+def LSTM(x, num_units, output, name="LSTM", fb=1.0):
+
+    with tf.variable_scope(name):
+
+        w = weight_variable([num_units, output])
+        b = bias_variable([output])
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units, forget_bias=fb)
+        outputs, states = tf.contrib.rnn.static_rnn(lstm_cell,
+                                                    x, dtype=tf.float32)
+
+        return tf.matmul(outputs[-1], w) + b
+
+
+def max_pool_layer(conv_tensor, width, height, channels, padding="SAME",
+                   name="max_pool"):
+    """
+
+    Performs a max pooling on the input tensor
+    """
+
+    out = tf.nn.max_pool(conv_tensor, ksize=[-1, height, width, channels],
+                         strides = [1, 1, 1, 1], padding = padding,
+                         name = name)
+
+    return out
