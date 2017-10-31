@@ -54,16 +54,29 @@ with tf.name_scope("input"):
     y_ = tf.placeholder(tf.float32, [None, n_labels], name="labels")
     keep_prob = tf.placeholder(tf.float32, name="dropout_rate")
 
+if arch == "bidirectional":
+    # Unstack the tensor, 1 aa is fed to each lstm cell each timepoint
+    pre_lstm1 = tf.unstack(x, n_timesteps, 1)
+    pre_lstm2 = tf.unstack(x_back, n_timesteps, 1)
+    # LSTM Layer
+    post_lstm1 = LSTM(pre_lstm1, n_units_lstm, out_lstm_size, name="forward")
+    post_lstm2 = LSTM(pre_lstm2, n_units_lstm, out_lstm_size, name="backward")
+    un_lstms = tf.concat([post_lstm1, post_lstm2], 1)
+    fc1 = tf.nn.dropout(fc_layer(un_lstms, out_lstm_size * 2, n_units_fc,
+                             relu=True, name="fc1"), keep_prob)
 
-#  Unstack the tensor, 1 aa will be fed to each lstm cell each timepoint
-pre_lstm1 = tf.unstack(x, n_timesteps, 1)
-# pre_lstm2 = tf.unstack(x_back, n_timesteps, 1)
+elif arch == "forward":
+    # Unstack the tensor, 1 aa is fed to each lstm cell each timepoint
+    pre_lstm = tf.unstack(x, n_timesteps, 1)
+    post_lstm = LSTM(pre_lstm, n_units_lstm, out_lstm_size, name="forward")
+    fc1 = tf.nn.dropout(fc_layer(post_lstm, out_lstm_size, n_units_fc,
+                             relu=True, name="fc1"), keep_prob)
 
-post_lstm1 = LSTM(pre_lstm1, n_units_lstm, 100, name="forward")
-# post_lstm2 = LSTM(pre_lstm2, n_units_lstm, 100, name="backward")
-
-# un_lstms = tf.concat([post_lstm1, post_lstm2], 1)
-fc1 = tf.nn.dropout(fc_layer(post_lstm1, 100, n_units_fc,
+elif arch == "backward":
+    # Unstack the tensor, 1 aa is fed to each lstm cell each timepoint
+    pre_lstm = tf.unstack(x_back, n_timesteps, 1)
+    post_lstm = LSTM(pre_lstm, n_units_lstm, out_lstm_size, name="backward")
+    fc1 = tf.nn.dropout(fc_layer(post_lstm, out_lstm_size, n_units_fc,
                              relu=True, name="fc1"), keep_prob)
 
 y = fc_layer(fc1, n_units_fc, n_labels, relu=True, name="fc2")
