@@ -29,19 +29,19 @@ labels = dataset.labels
 add_conv = True if len(argv) == 5 else False
 n_labels = len(labels)
 aa_vec_len = len(dataset.aa_dict.values()[0])
-n_epochs = 1000
+n_epochs = 400
 minibatch_size = 500
 learn_step = 0.02
 iters_x_epoch = int(round(len(input_tensor)/minibatch_size, 0))
 drop_prob = float(argv[1])
 n_units_fc = int(argv[2])
-n_units_lstm = 100
-print_progress = False
+n_units_lstm = 150
+print_progress = True
 n_filters = 20
 n_timesteps = seq_len
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs2/{}-{}-{}-drop{}-{}x11)(seq+props)seqlen={}biLSTM".format(
+logdir = "/logs2/{}-{}-{}-drop{}-{}x11)(seq+props)seqlen={}forwardLSTM".format(
     datetime, learn_step, minibatch_size, drop_prob, n_units_fc, seq_len)
 
 os.makedirs(curr_dir + logdir + "/train")
@@ -73,10 +73,10 @@ else:
     pre_lstm2 = tf.unstack(x_back, n_timesteps, 1)
 
 post_lstm1 = LSTM(pre_lstm1, n_units_lstm, 100, name="forward")
-post_lstm2 = LSTM(pre_lstm2, n_units_lstm, 100, name="backward")
+# post_lstm2 = LSTM(pre_lstm2, n_units_lstm, 100, name="backward")
 
-un_lstms = tf.concat([post_lstm1, post_lstm2], 1)
-fc1 = tf.nn.dropout(fc_layer(un_lstms, 200, n_units_fc,
+# un_lstms = tf.concat([post_lstm1, post_lstm2], 1)
+fc1 = tf.nn.dropout(fc_layer(post_lstm1, 100, n_units_fc,
                              relu=True, name="fc1"), keep_prob)
 
 y = fc_layer(fc1, n_units_fc, n_labels, relu=True, name="fc2")

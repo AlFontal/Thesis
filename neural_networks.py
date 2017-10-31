@@ -109,8 +109,8 @@ def max_pool_layer(conv_tensor, width, height, channels, padding="SAME",
     Performs a max pooling on the input tensor
     """
 
-    out = tf.nn.max_pool(conv_tensor, ksize=[-1, height, width, channels],
-                         strides = [1, 1, 1, 1], padding = padding,
-                         name = name)
+    out = tf.nn.max_pool(conv_tensor, ksize=[1, width, 1, 1],
+                         strides=[1, width, 1, 1], padding=padding,
+                         name=name)
 
     return out
