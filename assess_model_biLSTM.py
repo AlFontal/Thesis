@@ -18,14 +18,16 @@ n_units_lstm = 100
 n_units_fc = 250
 seq_len = 750
 n_timesteps = seq_len
-model_dir ="logs2/2017-09-05 14:36:18-0.02-500-drop0.8-250x11)(seq+props)" \
-           "seqlen=750biLSTM"
+model_dir ="logs2/2017-10-31 13:39:35-0.02-500-drop0.8-100x11)" \
+           "(seq+props)seqlen=750forwardLSTM"
+
+arch = "backward"
 curr_dir = os.getcwd()
 seqdir = curr_dir + "/seqs/" + str(argv[1]) + ".fasta"
 props_file = "aa_propierties.csv"
 aa_string = "ARNDCEQGHILKMFPSTWYV"
 aa_dict = get_1h_dict(aa_string, props_file, add_props=False)
-
+out_lstm_size = 100
 
 def break_seq(seq, w=5):
     """

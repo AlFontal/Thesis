@@ -53,8 +53,8 @@ n_filters = 20
 n_timesteps = seq_len
 
 # Create logs directory for visualization in TensorBoard
-logdir = "/logs2/{}-{}-{}-drop{}-{}x11)(seq+props)seqlen={}forwardLSTM".format(
-    datetime, learn_step, minibatch_size, drop_prob, n_units_fc, seq_len)
+logdir = "/logs2/{}-{}-{}-drop{}-{}x11)(seq+props)seqlen={}{}LSTM".format(
+    datetime, learn_step, minibatch_size, drop_prob, n_units_fc, seq_len, arch)
 
 os.makedirs(curr_dir + logdir + "/train")
 os.makedirs(curr_dir + logdir + "/test")
