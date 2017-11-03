@@ -118,7 +118,7 @@ filts15 = [v for v in tf.trainable_variables() if v.name == "conv15/weights:0"]
 bias15 = [v for v in tf.trainable_variables() if v.name == "conv15/B:0"]
 filters = [filts5, filts10, filts15]
 biases = [bias5, bias10, bias15]
-print sess.run(filters[0])
+
 tf.global_variables_initializer().run()  # Initialize variables
 
 
