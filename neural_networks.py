@@ -90,7 +90,6 @@ def conv_layer(input_tensor, width, heigth, in_channels, out_channels,
 
 
 def LSTM(x, num_units, output, name="LSTM", fb=1.0):
-
     with tf.variable_scope(name):
 
         w = weight_variable([num_units, output])
@@ -114,3 +113,8 @@ def max_pool_layer(conv_tensor, width, height, channels, padding="SAME",
                          name=name)
 
     return out
+
+
+def trainable_input(shape, name="trainable_x", aa_vec_len=20):
+    initial = tf.constant(1 / aa_vec_len, shape=shape, dtype=tf.float32)
+    return tf.Variable(initial, name)
